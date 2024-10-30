@@ -5,8 +5,8 @@
  */
 
 import { atom, Getter, Setter, WritableAtom } from "jotai/vanilla";
-import { Loadable } from "../types/async";
-import { loadableWritableAtom } from "./async";
+import { Loadable } from "../types/loadable";
+import { loadableWritableAtom } from "./loadable";
 
 type Write<Args extends unknown[], Result> = (get: Getter, set: Setter, ...args: Args) => Result;
 

@@ -1,5 +1,5 @@
 import { atom, WritableAtom } from "jotai/vanilla"
-import { Loadable } from "../types/async"
+import { Loadable } from "../types/loadable"
 
 export function loadableWritableAtom<Value extends Promise<unknown>, Args extends unknown[]>(
     writableAtom: WritableAtom<null, Args, Value>

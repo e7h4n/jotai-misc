@@ -1,7 +1,7 @@
 import { atom, createStore, Getter, Setter } from "jotai/vanilla"
 import { describe, expect, test } from "vitest"
 import { delay } from 'signal-timers'
-import { loadableWritableAtom } from "../async"
+import { loadableWritableAtom } from "../loadable"
 import { createSignalSwitch } from "signal-transaction"
 
 describe('loadableWritableAtom', () => {

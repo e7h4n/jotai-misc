@@ -1,4 +1,4 @@
-export type * from './types/async'
+export type * from './types/loadable'
 
-export { transaction } from './lib/async'
-export { createSignalSwitch } from './lib/async'
+export { loadableWritableAtom } from './lib/loadable'
+export { actionAtom, loadableActionAtom } from './lib/action'
