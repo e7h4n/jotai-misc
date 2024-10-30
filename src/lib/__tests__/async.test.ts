@@ -1,7 +1,8 @@
-import { atom, createStore } from "jotai/vanilla"
+import { atom, createStore, Getter, Setter } from "jotai/vanilla"
 import { describe, expect, test } from "vitest"
 import { delay } from 'signal-timers'
 import { loadableWritableAtom } from "../async"
+import { createSignalSwitch } from "signal-transaction"
 
 describe('loadableWritableAtom', () => {
     test('will expose loading state', async () => {
@@ -54,11 +55,38 @@ describe('loadableWritableAtom', () => {
         const actionResultAtom = loadableWritableAtom(setAtom)
         const store = createStore()
 
-        const firstPromise = store.set(actionResultAtom)
-        const secondPromise = store.set(actionResultAtom)
-        expect(await secondPromise).toBe('success')
-        await expect(async () => { await firstPromise }).rejects.toThrow('test')
+        const first = store.set(actionResultAtom)
+        const second = store.set(actionResultAtom)
+        expect(await second).toBe('success')
+        await expect(async () => { await first }).rejects.toThrow('test')
         expect(store.get(count)).toBe(1)
         expect(store.get(actionResultAtom).state).toBe('loaded')
+    })
+
+    test('should handle abort error correctly', async () => {
+        const count = atom(0)
+
+        const signalSwitch = createSignalSwitch(new AbortController().signal)
+        const setAtom = atom(null, signalSwitch(async (signal: AbortSignal, get: Getter, set: Setter): Promise<string> => {
+            if (get(count) === 0) {
+                set(count, 1)
+                await delay(20, { signal })
+                return "1"
+            }
+
+            await delay(50, { signal })
+            return "2"
+        }))
+
+        const actionResultAtom = loadableWritableAtom(setAtom)
+        const store = createStore()
+        const first = store.set(actionResultAtom)
+        const second = store.set(actionResultAtom)
+
+        await expect(async () => { await first }).rejects.toThrow('AbortError: signal is aborted without reason')
+        expect(await second).toBe('2')
+        expect(store.get(count)).toBe(1)
+        const state = store.get(actionResultAtom);
+        expect(state.state === 'loaded' && state.value).toBe('2')
     })
 })

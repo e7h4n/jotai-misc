@@ -7,6 +7,7 @@ export function loadableWritableAtom<Value extends Promise<unknown>, Args extend
     const internalValueAtom = atom<Awaited<Value>>()
     const internalLoadingAtom = atom(true)
     const internalErrorAtom = atom<unknown>()
+    const internalIndexAtom = atom(0)
 
     return atom(get => {
         const loading = get(internalLoadingAtom)
@@ -34,20 +35,29 @@ export function loadableWritableAtom<Value extends Promise<unknown>, Args extend
             state: 'loaded',
             value: value
         }
-    }, async (_get, set, ...args: Args): Promise<Awaited<Value>> => {
-        console.log('start')
+    }, async (get, set, ...args: Args): Promise<Awaited<Value>> => {
+        const index = get(internalIndexAtom)
+        set(internalIndexAtom, x => x + 1)
+
         set(internalLoadingAtom, true)
         try {
-            console.log('set')
             const ret = await set(writableAtom, ...args)
-            console.log('set ret')
+            if (index !== get(internalIndexAtom) - 1) {
+                return ret;
+            }
+
             set(internalValueAtom, ret)
             return ret;
         } catch (err) {
-            set(internalErrorAtom, err)
+            if (index === get(internalIndexAtom) - 1) {
+                set(internalErrorAtom, err)
+            }
+
             throw err
         } finally {
-            set(internalLoadingAtom, false)
+            if (index === get(internalIndexAtom) - 1) {
+                set(internalLoadingAtom, false)
+            }
         }
     })
 }
