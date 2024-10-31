@@ -1,5 +1,5 @@
 import { atom, createStore, Getter, Setter } from "jotai/vanilla"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { delay } from 'signal-timers'
 import { loadableWritableAtom } from "../loadable"
 import { createSignalSwitch } from "signal-transaction"
@@ -21,23 +21,22 @@ describe('loadableWritableAtom', () => {
         expect(await result).toBe('success')
 
         const state = store.get(actionResultAtom)
-        expect(state.state === 'loaded' && state.value).toBe('success')
+        expect(state.state === 'hasData' && state.data).toBe('success')
     })
 
     test('will expose error state', async () => {
-        const setAtom = atom(null, async () => {
+        const actionAtom = loadableWritableAtom(atom(null, async () => {
             await delay(20)
             throw new Error('test')
-        })
+        }))
 
-        const actionResultAtom = loadableWritableAtom(setAtom)
         const store = createStore()
-        expect(store.get(actionResultAtom).state).toBe('loading')
+        const promise = store.set(actionAtom)
+        await expect(promise).rejects.toThrow('test')
+        await delay(100)
 
-        await expect(async () => { await store.set(actionResultAtom) }).rejects.toThrow('test')
-
-        const state = store.get(actionResultAtom)
-        expect(state.state === 'error' && state.error).toBeInstanceOf(Error)
+        const state = store.get(actionAtom)
+        expect(state.state === 'hasError' && state.error).toBeInstanceOf(Error)
     })
 
     test('will not accept old result if new action is maded', async () => {
@@ -58,9 +57,9 @@ describe('loadableWritableAtom', () => {
         const first = store.set(actionResultAtom)
         const second = store.set(actionResultAtom)
         expect(await second).toBe('success')
-        await expect(async () => { await first }).rejects.toThrow('test')
+        await expect(first).rejects.toThrow('test')
         expect(store.get(count)).toBe(1)
-        expect(store.get(actionResultAtom).state).toBe('loaded')
+        expect(store.get(actionResultAtom).state).toBe('hasData')
     })
 
     test('should handle abort error correctly', async () => {
@@ -87,6 +86,36 @@ describe('loadableWritableAtom', () => {
         expect(await second).toBe('2')
         expect(store.get(count)).toBe(1)
         const state = store.get(actionResultAtom);
-        expect(state.state === 'loaded' && state.value).toBe('2')
+        expect(state.state === 'hasData' && state.data).toBe('2')
+    })
+
+    test('await and promise then order', async () => {
+        const promise = (async () => {
+            await delay(20)
+        })();
+
+        const trace = vi.fn()
+
+        void promise.then(() => {
+            trace('in then promise')
+        })
+
+        void promise.finally(() => {
+            trace('in finally promise')
+        })
+
+        void promise.then().finally(() => {
+            trace('in finally promise after then')
+        })
+
+        await promise;
+        trace('after await')
+        expect(trace).toHaveBeenCalledTimes(3)
+        expect(trace).toHaveBeenNthCalledWith(1, 'in then promise')
+        expect(trace).toHaveBeenNthCalledWith(2, 'in finally promise')
+        expect(trace).toHaveBeenNthCalledWith(3, 'after await')
+
+        await delay(0)
+        expect(trace).toHaveBeenCalledTimes(4)
     })
 })

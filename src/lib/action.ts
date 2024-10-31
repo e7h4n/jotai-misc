@@ -5,15 +5,11 @@
  */
 
 import { atom, Getter, Setter, WritableAtom } from "jotai/vanilla";
-import { Loadable } from "../types/loadable";
 import { loadableWritableAtom } from "./loadable";
+import { Loadable } from "jotai/vanilla/utils/loadable";
 
 type Write<Args extends unknown[], Result> = (get: Getter, set: Setter, ...args: Args) => Result;
 
-export function actionAtom<Args extends unknown[], Result>(write: Write<Args, Result>): WritableAtom<null, Args, Result> {
-    return atom(null, write)
-}
-
-export function loadableActionAtom<Args extends unknown[], Result extends Promise<unknown>>(write: Write<Args, Result>): WritableAtom<Loadable<Awaited<Result>>, Args, Promise<Awaited<Result>>> {
-    return loadableWritableAtom(actionAtom(write))
+export function asyncActionAtom<Args extends unknown[], Result extends Promise<unknown>>(write: Write<Args, Result>): WritableAtom<Loadable<Result | undefined>, Args, Result> {
+    return loadableWritableAtom(atom(null, write))
 }
